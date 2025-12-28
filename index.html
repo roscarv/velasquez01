@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Oscar Velasquez - XP Professional</title>
+    <!-- Webamp -->
+    <script src="https://unpkg.com/webamp@1.4.2/built/webamp.bundle.min.js"></script>
+    <style>
+        :root {
+            --xp-blue: #0055EA;
+            --xp-blue-grad-start: #0058EE;
+            --xp-blue-grad-end: #0042D4;
+            --xp-bar-start: #245DDA;
+            --xp-bar-end: #2063DE;
+            --win-bg: #ECE9D8;
+            --font-main: 'Tahoma', 'Segoe UI', sans-serif;
+            --glass-bg: rgba(20, 20, 30, 0.85);
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+        }
+
+        /* --- MODERN RESET --- */
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            font-family: var(--font-main);
+            height: 100vh; height: 100dvh; width: 100vw;
+            background: url('https://upload.wikimedia.org/wikipedia/en/2/27/Bliss_%28Windows_XP%29.png') no-repeat center center fixed; 
+            background-size: cover;
+        }
+
+        /* --- DESKTOP ICONS --- */
+        .desktop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 90px);
+            grid-auto-rows: 100px;
+            gap: 10px;
+            padding: 20px;
+            position: absolute;
+            top: 0; left: 0; bottom: 40px; right: 0;
+            pointer-events: none;
+        }
+        .icon {
+            pointer-events: auto;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; text-align: center; color: white;
+            text-shadow: 1px 1px 3px black;
+            transition: transform 0.15s ease;
+        }
+        .icon:hover { transform: scale(1.05); filter: brightness(1.1); }
+        .icon:active { transform: scale(0.95); opacity: 0.8; }
+        .icon img { width: 48px; height: 48px; margin-bottom: 5px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); object-fit: contain; }
+        .icon span { font-size: 13px; padding: 2px 4px; border-radius: 3px; line-height: 1.3; background: rgba(0,0,0,0.1); }
+
+        /* --- WINDOW SYSTEM --- */
+        .window {
+            position: absolute;
+            background-color: var(--win-bg);
+            border: 3px solid var(--xp-blue);
+            border-top-left-radius: 8px; border-top-right-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
+            min-width: 300px; min-height: 200px;
+            z-index: 10;
+            opacity: 0; transform: scale(0.95);
+            transition: opacity 0.2s, transform 0.2s, width 0.1s, height 0.1s;
+            resize: both; /* Allow native resizing */
+            overflow: hidden; /* Hide overflow from resize handle */
+        }
+        .window.open { opacity: 1; transform: scale(1); }
+        
+        .title-bar {
+            background: linear-gradient(to bottom, var(--xp-blue-grad-start) 0%, #3593FF 4%, #288EFF 18%, #127DFF 20%, #0369FC 39%, #0253DF 70%, var(--xp-blue-grad-end) 100%);
+            height: 30px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 8px; color: white; font-weight: bold; font-size: 13px;
+            text-shadow: 1px 1px 1px black;
+            border-top-left-radius: 5px; border-top-right-radius: 5px;
+            cursor: grab; flex-shrink: 0;
+        }
+        .title-bar:active { cursor: grabbing; }
+        
+        .controls { display: flex; gap: 4px; }
+        .win-btn {
+            width: 22px; height: 22px;
+            border: 1px solid white; border-radius: 3px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-family: sans-serif; font-size: 12px;
+            box-shadow: inset 0 0 3px rgba(255,255,255,0.6);
+            cursor: pointer;
+        }
+        .win-btn.close { background: #E0422D; border-color: #D32F2F; font-size: 14px; font-weight: bold; }
+        .win-btn.min { background: #288EFF; align-items: flex-end; }
+        .win-btn.max { background: #288EFF; }
+
+        .window-body {
+            flex: 1; background: white; overflow: auto;
+            position: relative; scrollbar-width: thin;
+        }
+
+        /* --- MODERN PLAYER STYLING --- */
+        #win-modern-player {
+            border: 1px solid #333;
+            background-color: #1a1a1a;
+            color: #eee;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+        #win-modern-player .title-bar {
+            background: #222;
+            border-bottom: 1px solid #444;
+        }
+        
+        .player-grid {
+            display: grid;
+            grid-template-rows: 1fr auto auto; /* Visualizer/Video, Controls, Playlist */
+            height: 100%;
+            background: linear-gradient(145deg, #1a1a1a, #0d0d0d);
+        }
+
+        /* 1. Visualizer / Video Area */
+        .player-screen {
+            position: relative;
+            background: #000;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            min-height: 150px;
+        }
+        #visualizer-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; opacity: 0.6;
+        }
+        #youtube-frame {
+            position: relative; z-index: 2; width: 100%; height: 100%; border: none;
+        }
+        .overlay-info {
+            position: absolute; top: 10px; left: 10px; z-index: 3;
+            background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px;
+            font-size: 12px; color: var(--neon-blue); font-family: monospace;
+            pointer-events: none;
+        }
+
+        /* 2. Controls & Equalizer */
+        .player-controls-section {
+            padding: 15px;
+            border-top: 1px solid #333;
+            background: rgba(255,255,255,0.02);
+            display: flex; gap: 20px;
+        }
+        .main-controls {
+            flex: 1; display: flex; flex-direction: column; gap: 10px;
+        }
+        .transport-btns {
+            display: flex; gap: 15px; justify-content: center; align-items: center;
+        }
+        .p-btn {
+            background: none; border: 1px solid #444; color: #aaa;
+            width: 36px; height: 36px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; transition: all 0.2s;
+        }
+        .p-btn:hover { color: #fff; border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
+        .p-btn.play { width: 48px; height: 48px; font-size: 20px; border-color: var(--neon-blue); color: var(--neon-blue); }
+        
+        .progress-container {
+            height: 4px; background: #333; border-radius: 2px; position: relative; cursor: pointer;
+        }
+        .progress-bar {
+            width: 30%; height: 100%; background: var(--neon-blue); border-radius: 2px;
+            position: relative;
+        }
+        .progress-bar::after {
+            content: ''; position: absolute; right: -4px; top: -3px; width: 10px; height: 10px;
+            background: #fff; border-radius: 50%; box-shadow: 0 0 5px var(--neon-blue);
+        }
+
+        /* Equalizer Mini */
+        .equalizer-mini {
+            width: 100px; display: flex; gap: 4px; align-items: flex-end; height: 50px;
+            padding-bottom: 5px; border: 1px solid #333; padding: 5px; border-radius: 4px;
+            background: #111;
+        }
+        .eq-band {
+            flex: 1; background: #333; height: 100%; position: relative; border-radius: 2px;
+        }
+        .eq-level {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 50%;
+            background: linear-gradient(to top, var(--neon-blue), var(--neon-pink));
+            border-radius: 2px; transition: height 0.1s;
+        }
+
+        /* 3. Playlist / Library */
+        .player-playlist {
+            height: 150px; border-top: 1px solid #333;
+            display: flex; flex-direction: column;
+        }
+        .pl-header {
+            background: #222; padding: 5px 10px; font-size: 11px; color: #888;
+            display: flex; justify-content: space-between;
+        }
+        .pl-list {
+            flex: 1; overflow-y: auto; background: #111;
+            padding: 5px; font-family: monospace; font-size: 12px;
+        }
+        .track-item {
+            padding: 4px 8px; color: #aaa; cursor: pointer; border-bottom: 1px solid #222;
+            display: flex; justify-content: space-between;
+        }
+        .track-item:hover { background: #222; color: #fff; }
+        .track-item.active { color: var(--neon-blue); font-weight: bold; }
+        
+        .url-input-area {
+            padding: 5px; background: #222; display: flex; gap: 5px;
+        }
+        .url-input {
+            flex: 1; background: #111; border: 1px solid #444; color: #ddd; padding: 4px; font-size: 11px;
+        }
+        .url-btn {
+            background: #333; color: #fff; border: 1px solid #444; cursor: pointer; font-size: 10px; padding: 0 8px;
+        }
+
+        /* --- RESUME STYLING (Preserved) --- */
+        .resume-wrap { padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+        .resume-header { display: flex; gap: 20px; border-bottom: 4px solid var(--xp-blue); padding-bottom: 20px; margin-bottom: 30px; align-items: center; }
+        .avatar { width: 100px; height: 100px; border: 3px solid #ddd; border-radius: 4px; object-fit: cover; }
+        .header-text h1 { margin: 0; font-size: 2.2em; color: #222; }
+        .header-text h2 { margin: 5px 0; font-size: 1.2em; color: var(--xp-blue); }
+        .section-title { font-size: 1.1em; color: var(--xp-blue); border-bottom: 1px solid #eee; margin: 25px 0 15px; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .job-card { background: #f9f9f9; padding: 15px; border-left: 4px solid #ccc; margin-bottom: 20px; transition: border-color 0.2s; }
+        .job-card:hover { border-left-color: var(--xp-blue); }
+        .job-top { display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 5px; }
+        .job-role { font-weight: bold; font-size: 1.1em; }
+        .job-meta { font-size: 0.9em; color: #666; }
+        .job-desc { margin: 8px 0 0 0; padding-left: 18px; font-size: 0.95em; color: #444; }
+        .job-desc li { margin-bottom: 4px; }
+
+        /* --- TASKBAR --- */
+        #taskbar {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 32px;
+            background: linear-gradient(to bottom, var(--xp-bar-start), var(--xp-bar-end));
+            display: flex; align-items: center; z-index: 9999; border-top: 1px solid rgba(255,255,255,0.3);
+        }
+        #start-btn {
+            width: 100px; height: 100%;
+            background: linear-gradient(to bottom, #3C8E3D, #61C555 50%, #3C8E3D);
+            border-top-right-radius: 10px; border-bottom-right-radius: 10px;
+            display: flex; align-items: center; padding-left: 8px; gap: 5px;
+            font-style: italic; font-weight: bold; color: white; font-size: 15px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); cursor: pointer;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+        }
+        #start-btn:hover { filter: brightness(1.1); }
+        #start-btn img { width: 20px; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3)); }
+
+        .task-list { flex: 1; display: flex; gap: 3px; padding-left: 10px; overflow: hidden; }
+        .task-entry {
+            width: 150px; height: 26px; background: #3C81F3; border-radius: 3px;
+            display: flex; align-items: center; padding: 0 8px; gap: 8px;
+            color: white; font-size: 11px; cursor: pointer; user-select: none;
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+        }
+        .task-entry:hover { background: #5FAAFF; }
+        .task-entry.active { background: #1E52B7; box-shadow: inset 1px 1px 4px rgba(0,0,0,0.5); }
+        .task-entry img { width: 16px; height: 16px; }
+
+        .sys-tray {
+            width: 90px; height: 100%; background: #1290E9; border-left: 1px solid #0E59A5;
+            display: flex; align-items: center; justify-content: center; color: white; font-size: 11px;
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* --- START MENU --- */
+        #start-menu {
+            position: absolute; bottom: 32px; left: 0; width: 300px; height: 400px;
+            background: white; border-top-right-radius: 8px; border-top-left-radius: 8px;
+            display: none; flex-direction: column; z-index: 9998;
+            box-shadow: 5px -5px 15px rgba(0,0,0,0.4); border: 2px solid var(--xp-blue);
+        }
+        #start-menu.open { display: flex; }
+        
+        .start-top {
+            height: 50px; background: linear-gradient(to bottom, var(--xp-blue-grad-start), var(--xp-blue-grad-end));
+            border-top-right-radius: 6px; border-top-left-radius: 6px;
+            display: flex; align-items: center; padding: 0 10px; gap: 10px;
+            color: white; font-weight: bold; font-size: 16px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .user-pic { width: 36px; height: 36px; border: 2px solid white; border-radius: 3px; background: orange; }
+        
+        .start-content { flex: 1; display: flex; }
+        .start-left { flex: 1; padding: 5px; display: flex; flex-direction: column; gap: 2px; }
+        .start-right { width: 45%; background: #D3E5FA; border-left: 1px solid #95BDE7; padding: 5px; }
+        .menu-item { padding: 6px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: #333; cursor: pointer; border-radius: 3px; }
+        .menu-item:hover { background: #2F71CD; color: white; }
+        .menu-item img { width: 24px; height: 24px; }
+        .start-bottom { height: 35px; background: linear-gradient(to bottom, var(--xp-bar-start), var(--xp-bar-end)); display: flex; align-items: center; justify-content: flex-end; padding-right: 15px; color: white; font-size: 11px; }
+
+        /* --- MOBILE ADAPTATIONS --- */
+        @media (max-width: 768px) {
+            .desktop-grid { grid-template-columns: repeat(3, 1fr); padding: 10px; }
+            .icon { width: auto; }
+            .window { width: 96% !important; height: 85% !important; left: 2% !important; top: 2% !important; }
+            
+            #win-modern-player { width: 96% !important; height: 70% !important; top: 10% !important; left: 2% !important; }
+            
+            #taskbar { height: 40px; }
+            #start-btn { width: 60px; padding-left: 0; justify-content: center; }
+            #start-btn span { display: none; }
+            #start-btn img { margin: 0; }
+            .task-entry span { display: none; }
+            .task-entry { width: 40px; justify-content: center; padding: 0; }
+            .sys-tray { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ICONS -->
+    <div class="desktop-grid">
+        <div class="icon" onclick="openWindow('resume', 'Resume')">
+            <img src="https://win98icons.alexmeub.com/icons/png/directory_open_file_mydocs_2k-4.png" alt="Resume">
+            <span>Resume</span>
+        </div>
+        <div class="icon" onclick="openWindow('computer', 'My Computer')">
+            <img src="https://win98icons.alexmeub.com/icons/png/computer_explorer-5.png" alt="PC">
+            <span>My Computer</span>
+        </div>
+        <div class="icon" onclick="openWindow('modern-player', 'Media Player')">
+            <img src="https://win98icons.alexmeub.com/icons/png/cd_audio_cd_a-4.png" alt="Player">
+            <span>Modern Player</span>
+        </div>
+        <div class="icon" onclick="openWindow('paint', 'Paint')">
+            <img src="https://win98icons.alexmeub.com/icons/png/paint-4.png" alt="Paint">
+            <span>Paint</span>
+        </div>
+        <div class="icon" onclick="window.open('https://www.linkedin.com/in/oscar-velasquez-4377776b/', '_blank')">
+            <img src="https://win98icons.alexmeub.com/icons/png/msie1-2.png" alt="Linked">
+            <span>LinkedIn</span>
+        </div>
+    </div>
+
+    <!-- WINDOW: RESUME -->
+    <div id="win-resume" class="window" style="width: 700px; height: 550px; top: 50px; left: 50px; display: none;">
+        <div class="title-bar" onmousedown="dragStart(event, 'win-resume')" ontouchstart="dragStart(event, 'win-resume')">
+            <div class="title-bar-text">Resume - Oscar Velasquez</div>
+            <div class="controls">
+                <div class="win-btn min" onclick="minimizeWindow('win-resume')">_</div>
+                <div class="win-btn max" onclick="maximizeWindow('win-resume')">□</div>
+                <div class="win-btn close" onclick="closeWindow('win-resume')">X</div>
+            </div>
+        </div>
+        <div class="window-body">
+            <div class="resume-wrap">
+                <div class="resume-header">
+                    <img src="https://www.w3schools.com/howto/img_avatar.png" class="avatar" alt="Oscar">
+                    <div class="header-text">
+                        <h1>Oscar Velasquez</h1>
+                        <h2>Test Engineer Supervisor & System Developer</h2>
+                        <p>Houston, Texas Area | 19 Years at Foxconn</p>
+                    </div>
+                </div>
+                <div class="section-title">Experience</div>
+                <div class="job-card">
+                    <div class="job-top"><span class="job-role">Test Engineer Supervisor</span><span class="job-meta">Jan 2025 - Present</span></div>
+                    <div class="job-meta">Foxconn Industrial Internet USA</div>
+                    <ul class="job-desc"><li>Supervise test engineering teams.</li><li>Enhance testing with AI.</li></ul>
+                </div>
+                <div class="job-card">
+                    <div class="job-top"><span class="job-role">System Developer</span><span class="job-meta">Oct 2013 - Present</span></div>
+                    <div class="job-meta">Foxconn</div>
+                    <ul class="job-desc"><li>Develop test software (C/C++, Java).</li><li>Automate NPI setup.</li></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOW: MODERN PLAYER -->
+    <div id="win-modern-player" class="window" style="width: 600px; height: 500px; top: 80px; left: 100px; display: none;">
+        <div class="title-bar" onmousedown="dragStart(event, 'win-modern-player')" ontouchstart="dragStart(event, 'win-modern-player')">
+            <div class="title-bar-text">Modern Media Player</div>
+            <div class="controls">
+                <div class="win-btn min" onclick="minimizeWindow('win-modern-player')">_</div>
+                <div class="win-btn max" onclick="maximizeWindow('win-modern-player')">□</div>
+                <div class="win-btn close" onclick="stopPlayer(); closeWindow('win-modern-player')">X</div>
+            </div>
+        </div>
+        <div class="window-body player-grid">
+            
+            <!-- 1. Visualizer / Video -->
+            <div class="player-screen">
+                <canvas id="visualizer-canvas"></canvas>
+                <div class="overlay-info" id="player-status">Ready to Play</div>
+                <iframe id="youtube-frame" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+
+            <!-- 2. Controls -->
+            <div class="player-controls-section">
+                <div class="main-controls">
+                    <div class="progress-container"><div class="progress-bar"></div></div>
+                    <div class="transport-btns">
+                        <div class="p-btn" title="Prev">⏮</div>
+                        <div class="p-btn play" onclick="togglePlay()" title="Play/Pause">▶</div>
+                        <div class="p-btn" onclick="stopPlayer()" title="Stop">⏹</div>
+                        <div class="p-btn" title="Next">⏭</div>
+                    </div>
+                </div>
+                <!-- Mini Equalizer Visual -->
+                <div class="equalizer-mini">
+                    <div class="eq-band"><div class="eq-level" style="height:40%"></div></div>
+                    <div class="eq-band"><div class="eq-level" style="height:70%"></div></div>
+                    <div class="eq-band"><div class="eq-level" style="height:50%"></div></div>
+                    <div class="eq-band"><div class="eq-level" style="height:30%"></div></div>
+                    <div class="eq-band"><div class="eq-level" style="height:80%"></div></div>
+                </div>
+            </div>
+
+            <!-- 3. Playlist / Library -->
+            <div class="player-playlist">
+                <div class="pl-header">
+                    <span>PLAYLIST</span>
+                    <span id="track-count">0 TRACKS</span>
+                </div>
+                <div class="pl-list" id="playlist-container">
+                    <!-- Dynamic Items -->
+                </div>
+                <div class="url-input-area">
+                    <input type="text" id="yt-url" class="url-input" placeholder="Paste URL (YouTube or Directory)..." value="https://dl4.beelody.com/Free/2022/">
+                    <button class="url-btn" onclick="loadYouTube()">LOAD YT</button>
+                    <button class="url-btn" style="background:#004400" onclick="scanDirectory()">SCAN DIR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOW: MY COMPUTER -->
+    <div id="win-computer" class="window" style="width: 500px; height: 400px; top: 100px; left: 100px; display: none;">
+        <div class="title-bar" onmousedown="dragStart(event, 'win-computer')" ontouchstart="dragStart(event, 'win-computer')">
+            <div class="title-bar-text">My Computer</div>
+            <div class="controls"><div class="win-btn close" onclick="closeWindow('win-computer')">X</div></div>
+        </div>
+        <div class="window-body" style="background:white; padding:10px;">
+            <div class="desktop-grid" style="position:static; grid-template-columns: repeat(auto-fill, 100px);">
+                <div class="icon" style="color:black; text-shadow:none;">
+                    <img src="https://win98icons.alexmeub.com/icons/png/hard_disk_drive-3.png"><span style="color:black">Local Disk (C:)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOW: PAINT -->
+    <div id="win-paint" class="window" style="width: 500px; height: 400px; top: 120px; left: 120px; display: none;">
+        <div class="title-bar" onmousedown="dragStart(event, 'win-paint')" ontouchstart="dragStart(event, 'win-paint')">
+            <div class="title-bar-text">Paint</div>
+            <div class="controls"><div class="win-btn close" onclick="closeWindow('win-paint')">X</div></div>
+        </div>
+        <div class="window-body" style="background:#808080; display:flex; flex-direction:column;">
+            <div style="background:#ECE9D8; height:30px; display:flex; gap:5px; padding:2px;">
+                <div style="width:20px; height:20px; background:red; cursor:pointer;" onclick="setPaintColor('red')"></div>
+                <div style="width:20px; height:20px; background:blue; cursor:pointer;" onclick="setPaintColor('blue')"></div>
+                <div style="width:20px; height:20px; background:black; cursor:pointer;" onclick="setPaintColor('black')"></div>
+            </div>
+            <div style="flex:1; padding:10px; display:flex; justify-content:center;">
+                <canvas id="paint-canvas" width="400" height="300" style="background:white; cursor:crosshair;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- TASKBAR -->
+    <div id="taskbar">
+        <div id="start-btn" onclick="toggleStart()">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Windows_logo_-_2002%E2%80%932012_%28multicolored_lines%29.svg/40px-Windows_logo_-_2002%E2%80%932012_%28multicolored_lines%29.svg.png" alt="logo">
+            <span>start</span>
+        </div>
+        <div class="task-list" id="task-list"></div>
+        <div class="sys-tray"><span id="clock">12:00 PM</span></div>
+    </div>
+
+    <!-- START MENU -->
+    <div id="start-menu">
+        <div class="start-top"><div class="user-pic"></div><span>Oscar</span></div>
+        <div class="start-content">
+            <div class="start-left">
+                <div class="menu-item" onclick="openWindow('resume', 'Resume')"><img src="https://win98icons.alexmeub.com/icons/png/directory_open_file_mydocs_2k-4.png">My Resume</div>
+                <div class="menu-item" onclick="openWindow('modern-player', 'Media Player')"><img src="https://win98icons.alexmeub.com/icons/png/cd_audio_cd_a-4.png">Media Player</div>
+                <div class="menu-item" onclick="openWindow('paint', 'Paint')"><img src="https://win98icons.alexmeub.com/icons/png/paint-4.png">Paint</div>
+            </div>
+            <div class="start-right"><div class="menu-item"><img src="https://win98icons.alexmeub.com/icons/png/computer_explorer-5.png">My Computer</div></div>
+        </div>
+        <div class="start-bottom"><div class="menu-item" onclick="location.reload()"><img src="https://win98icons.alexmeub.com/icons/png/key_win-4.png"> Log Off</div></div>
+    </div>
+
+    <script>
+        /* --- CLOCK --- */
+        function updateClock() {
+            const d = new Date();
+            let h = d.getHours(), m = d.getMinutes();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12; m = m < 10 ? '0'+m : m;
+            document.getElementById('clock').innerText = `${h}:${m} ${ampm}`;
+        }
+        setInterval(updateClock, 1000); updateClock();
+
+        /* --- WINDOW SYSTEM --- */
+        let zIndex = 100;
+        function openWindow(id, title) {
+            const el = document.getElementById('win-' + id);
+            if(!el) return;
+            el.style.display = 'flex';
+            el.classList.remove('open');
+            void el.offsetWidth;
+            el.classList.add('open');
+            el.style.zIndex = ++zIndex;
+            addTask(id, title || 'Window');
+            document.getElementById('start-menu').classList.remove('open');
+        }
+        function closeWindow(id) {
+            const el = document.getElementById(id);
+            el.classList.remove('open');
+            setTimeout(() => el.style.display = 'none', 200);
+            removeTask(id.replace('win-', ''));
+        }
+        function minimizeWindow(id) {
+            document.getElementById(id).classList.remove('open');
+            setTimeout(() => document.getElementById(id).style.display = 'none', 200);
+        }
+        function maximizeWindow(id) {
+            const el = document.getElementById(id);
+            if(el.style.width === '100%') {
+                el.style.width = '700px'; el.style.height = '550px'; el.style.top = '50px'; el.style.left = '50px';
+            } else {
+                el.style.width = '100%'; el.style.height = 'calc(100% - 35px)'; el.style.top = '0'; el.style.left = '0';
+            }
+        }
+
+        /* --- TASKBAR --- */
+        function addTask(id, title) {
+            const list = document.getElementById('task-list');
+            if(document.getElementById('task-'+id)) return;
+            const item = document.createElement('div');
+            item.className = 'task-entry active';
+            item.id = 'task-'+id;
+            item.innerHTML = `<img src="https://win98icons.alexmeub.com/icons/png/directory_open_file_mydocs_2k-4.png"> <span>${title}</span>`;
+            item.onclick = () => {
+                const win = document.getElementById('win-'+id);
+                if(win.style.display === 'none') {
+                    win.style.display = 'flex'; setTimeout(() => win.classList.add('open'), 10); win.style.zIndex = ++zIndex;
+                } else {
+                    win.classList.remove('open'); setTimeout(() => win.style.display = 'none', 200);
+                }
+            };
+            list.appendChild(item);
+        }
+        function removeTask(id) { const item = document.getElementById('task-'+id); if(item) item.remove(); }
+        function toggleStart() { document.getElementById('start-menu').classList.toggle('open'); }
+
+        /* --- MODERN PLAYER LOGIC --- */
+        let isPlaying = false;
+        let currentAudio = null; 
+
+        function stopPlayer() {
+            const yt = document.getElementById('youtube-frame');
+            if(yt) yt.src = "";
+            if(currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            document.getElementById('player-status').innerText = "Stopped";
+            isPlaying = false;
+        }
+        
+        function loadYouTube() {
+            const url = document.getElementById('yt-url').value;
+            let id = url.split('v=')[1]?.split('&')[0] || url.split('youtu.be/')[1];
+            if(id) {
+                if(currentAudio) { currentAudio.pause(); }
+                document.getElementById('youtube-frame').src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+                document.getElementById('player-status').innerText = "Streaming YouTube...";
+                addToPlaylist("YouTube Stream", "Video");
+                isPlaying = true;
+            }
+        }
+
+        function togglePlay() {
+            if(currentAudio) {
+                if(currentAudio.paused) {
+                    currentAudio.play();
+                    isPlaying = true;
+                    document.getElementById('player-status').innerText = "Playing Audio";
+                } else {
+                    currentAudio.pause();
+                    isPlaying = false;
+                    document.getElementById('player-status').innerText = "Paused";
+                }
+            } else {
+                isPlaying = !isPlaying;
+            }
+        }
+
+        function addToPlaylist(title, artist) {
+            const list = document.getElementById('playlist-container');
+            const item = document.createElement('div');
+            item.className = 'track-item';
+            item.innerHTML = `<span>${title}</span><span style="color:#666">${artist}</span>`;
+            list.appendChild(item);
+            updateTrackCount();
+        }
+
+        function updateTrackCount() {
+            const count = document.getElementById('playlist-container').children.length;
+            document.getElementById('track-count').innerText = `${count} TRACKS`;
+        }
+
+        // --- DIRECTORY SCANNER ---
+        async function scanDirectory() {
+            const inputUrl = document.getElementById('yt-url').value;
+            const list = document.getElementById('playlist-container');
+            const status = document.getElementById('player-status');
+            
+            // Clear current list unless you want to append
+            // list.innerHTML = ""; 
+            status.innerText = "Connecting to Server...";
+
+            try {
+                // Call local python server which does the scraping
+                const response = await fetch('/scan?url=' + encodeURIComponent(inputUrl));
+                if (!response.ok) throw new Error("Scan Request Failed");
+                
+                const tracks = await response.json();
+                
+                if(tracks.length === 0) {
+                    status.innerText = "No Tracks Found";
+                    alert("No audio files found at that location.");
+                    return;
+                }
+                
+                status.innerText = `Found ${tracks.length} Tracks!`;
+                
+                tracks.forEach(track => {
+                    createTrackItem(track.metaData.title, track.url);
+                });
+                
+                updateTrackCount();
+                
+            } catch(e) {
+                console.error(e);
+                status.innerText = "Scan Error (Check Server)";
+                alert("Could not scan directory. Ensure server.py is running and the URL is accessible.");
+            }
+        }
+
+        function createTrackItem(name, url) {
+            const list = document.getElementById('playlist-container');
+            const item = document.createElement('div');
+            item.className = 'track-item';
+            item.innerHTML = `<span>${name}</span><span style="color:#666">AUDIO</span>`;
+            item.onclick = () => playAudio(url, name);
+            list.appendChild(item);
+        }
+
+        function playAudio(url, name) {
+            stopPlayer(); 
+            document.getElementById('player-status').innerText = `Loading...`;
+            
+            currentAudio = new Audio(url);
+            
+            currentAudio.play().then(() => {
+                isPlaying = true;
+                document.getElementById('player-status').innerText = `Playing: ${name}`;
+            }).catch(err => {
+                console.error(err);
+                document.getElementById('player-status').innerText = "Error: Stream Blocked";
+                alert(`Error playing file: ${err.message}`);
+            });
+        }
+
+        // Visualizer Animation
+        const cvs = document.getElementById('visualizer-canvas');
+        const ctx = cvs.getContext('2d');
+        function drawVis() {
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--neon-blue') || '#00f3ff';
+            const bars = 20;
+            const w = cvs.width / bars;
+            for(let i=0; i<bars; i++) {
+                const h = Math.random() * cvs.height * 0.8;
+                ctx.fillRect(i * w, cvs.height - h, w - 2, h);
+            }
+            if(document.getElementById('win-modern-player').style.display !== 'none') requestAnimationFrame(drawVis);
+        }
+        setInterval(() => { if(isPlaying) requestAnimationFrame(drawVis); }, 500);
+
+
+        /* --- DRAGGING (Universal) --- */
+        let dragEl = null; let diffX = 0, diffY = 0;
+        function dragStart(e, id) {
+            const evt = e.type === 'touchstart' ? e.touches[0] : e;
+            dragEl = document.getElementById(id);
+            dragEl.style.zIndex = ++zIndex;
+            const rect = dragEl.getBoundingClientRect();
+            diffX = evt.clientX - rect.left; diffY = evt.clientY - rect.top;
+        }
+        function dragging(e) {
+            if(!dragEl) return;
+            const evt = e.type === 'touchmove' ? e.touches[0] : e;
+            let x = evt.clientX - diffX; let y = evt.clientY - diffY;
+            if (y < 0) y = 0; 
+            dragEl.style.left = x + 'px'; dragEl.style.top = y + 'px';
+            if(e.type === 'touchmove') e.preventDefault();
+        }
+        function dragEnd() { dragEl = null; }
+        document.addEventListener('mousemove', dragging);
+        document.addEventListener('touchmove', dragging, {passive: false});
+        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('touchend', dragEnd);
+
+        /* --- PAINT (Simple) --- */
+        let paintColor = 'black';
+        function setPaintColor(c) { paintColor = c; }
+        const pCanvas = document.getElementById('paint-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        let painting = false;
+        pCanvas.addEventListener('mousedown', e => { painting = true; pCtx.beginPath(); pCtx.moveTo(e.offsetX, e.offsetY); });
+        pCanvas.addEventListener('mousemove', e => { 
+            if(!painting) return; 
+            pCtx.strokeStyle = paintColor; pCtx.lineWidth = 2; pCtx.lineTo(e.offsetX, e.offsetY); pCtx.stroke(); 
+        });
+        pCanvas.addEventListener('mouseup', () => painting = false);
+
+        // Auto-open Resume
+        setTimeout(() => openWindow('resume', 'Resume'), 300);
+    </script>
+</body>
+</html>
